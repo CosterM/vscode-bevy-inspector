@@ -80,12 +80,20 @@ export class BevyInspectorExtension {
         schemaService = new ReflectionSchemaService();
       }
       const treeController = new TreeController(context, new EntityTreeRepository(brp));
-      const componentsController = new ComponentsController(context, new ComponentRepository(brp, schemaService));
+      const componentsController = new ComponentsController(
+        context,
+        new ComponentRepository(brp, schemaService),
+        schemaService,
+      );
       treeController.onSelectionChanged(componentsController.updateSelection.bind(componentsController));
       componentsController.onValueUpdated((entityUpdated) => treeController.refreshName(entityUpdated));
       this.disposables.push(treeController, componentsController);
       if (brp.supportsResources) {
-        const resourcesController = new ResourcesController(context, new ResourceRepository(brp, schemaService));
+        const resourcesController = new ResourcesController(
+          context,
+          new ResourceRepository(brp, schemaService),
+          schemaService,
+        );
         this.disposables.push(resourcesController);
       }
       if (brp.supportsRegistry) {

@@ -1,7 +1,13 @@
 import * as vscode from 'vscode';
-import type { UpdateRequestedEvent, ValuesUpdatedEvent, ViewEvent } from '../../inspector-data/messages';
+import type {
+  SchemaUpdatedEvent,
+  UpdateRequestedEvent,
+  ValuesUpdatedEvent,
+  ViewEvent,
+} from '../../inspector-data/messages';
 import {
   CollapsibleStateChanged,
+  SchemaUpdated,
   SetCollapsibleState,
   UpdateRequested,
   ValuesUpdated,
@@ -13,14 +19,17 @@ import { logger } from '../vscode/logger';
 import { DEFAULT_POLLING_DELAY, PollingService } from '../vscode/polling';
 import type { ResourceRepository } from './resourceRepository';
 import { ResourcesViewProvider } from './resourcesViewProvider';
+import type { SchemaService } from '../schemas/schemas';
 
 export class ResourcesController implements vscode.Disposable {
   private repository: ResourceRepository;
   private resourcesViewProvider: ResourcesViewProvider;
   private pollingService: PollingService = new PollingService();
+  private schemaService: SchemaService;
 
-  constructor(context: vscode.ExtensionContext, repository: ResourceRepository) {
+  constructor(context: vscode.ExtensionContext, repository: ResourceRepository, schemaService: SchemaService) {
     this.repository = repository;
+    this.schemaService = schemaService;
     this.resourcesViewProvider = new ResourcesViewProvider(context.extensionUri);
     context.subscriptions.push(
       vscode.window.registerWebviewViewProvider('bevyInspector.resources', this.resourcesViewProvider),
@@ -69,6 +78,12 @@ export class ResourcesController implements vscode.Disposable {
       type: ValuesUpdated,
       data: resources,
     } satisfies ValuesUpdatedEvent);
+
+    const schema = await this.schemaService.getRootSchema();
+    this.resourcesViewProvider.postMessage({
+      type: SchemaUpdated,
+      data: schema,
+    } satisfies SchemaUpdatedEvent);
   }
 
   private async handleMessage(message: unknown): Promise<void> {
