@@ -31,18 +31,19 @@ export class ComponentsController implements vscode.Disposable {
   private readonly valueUpdatedEmitter = new vscode.EventEmitter<EntityUpdated>();
   public readonly onValueUpdated: vscode.Event<EntityUpdated> = this.valueUpdatedEmitter.event;
   private schemaService: SchemaService;
+  private disposables: vscode.Disposable[] = [];
 
   constructor(context: vscode.ExtensionContext, repository: ComponentRepository, schemaService: SchemaService) {
     this.repository = repository;
     this.schemaService = schemaService;
     this.componentsViewProvider = new ComponentsViewProvider(context.extensionUri);
-    context.subscriptions.push(
+    this.disposables.push(
       vscode.window.registerWebviewViewProvider('bevyInspector.components', this.componentsViewProvider, {
         webviewOptions: { retainContextWhenHidden: true },
       }),
     );
     this.componentsViewProvider.onMessageReceived(this.handleMessage.bind(this));
-    context.subscriptions.push(
+    this.disposables.push(
       vscode.commands.registerCommand('bevyInspector.refreshComponents', this.refresh.bind(this)),
       vscode.commands.registerCommand('bevyInspector.enableComponentsPolling', this.enablePolling.bind(this)),
       vscode.commands.registerCommand('bevyInspector.disableComponentsPolling', this.disablePolling.bind(this)),
@@ -69,14 +70,16 @@ export class ComponentsController implements vscode.Disposable {
       }
     });
 
-    context.subscriptions.push(
+    this.disposables.push(
       vscode.commands.registerCommand('bevyInspector.insertComponent', this.insertComponent.bind(this)),
     );
+    context.subscriptions.push(...this.disposables);
   }
 
   dispose() {
     this.disablePolling();
     this.selectedEntity = undefined;
+    this.disposables.forEach((d) => d.dispose());
   }
 
   public async updateSelection(selectedEntity: EntityNode | undefined): Promise<void> {

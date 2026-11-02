@@ -26,16 +26,17 @@ export class ResourcesController implements vscode.Disposable {
   private resourcesViewProvider: ResourcesViewProvider;
   private pollingService: PollingService = new PollingService();
   private schemaService: SchemaService;
+  private disposables: vscode.Disposable[] = [];
 
   constructor(context: vscode.ExtensionContext, repository: ResourceRepository, schemaService: SchemaService) {
     this.repository = repository;
     this.schemaService = schemaService;
     this.resourcesViewProvider = new ResourcesViewProvider(context.extensionUri);
-    context.subscriptions.push(
+    this.disposables.push(
       vscode.window.registerWebviewViewProvider('bevyInspector.resources', this.resourcesViewProvider),
     );
     this.resourcesViewProvider.onMessageReceived(this.handleMessage.bind(this));
-    context.subscriptions.push(
+    this.disposables.push(
       vscode.commands.registerCommand('bevyInspector.refreshResources', this.refresh.bind(this)),
       vscode.commands.registerCommand('bevyInspector.enableResourcesPolling', this.enablePolling.bind(this)),
       vscode.commands.registerCommand('bevyInspector.disableResourcesPolling', this.disablePolling.bind(this)),
@@ -50,15 +51,18 @@ export class ResourcesController implements vscode.Disposable {
       }
     });
 
-    context.subscriptions.push(
+    this.disposables.push(
       vscode.commands.registerCommand('bevyInspector.insertResource', this.insertResource.bind(this)),
     );
 
     vscode.commands.executeCommand('setContext', 'bevyInspector.anyResourceExpanded', false);
+
+    context.subscriptions.push(...this.disposables);
   }
 
   dispose() {
     this.disablePolling();
+    this.disposables.forEach((d) => d.dispose());
   }
 
   private async enablePolling() {
